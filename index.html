@@ -366,13 +366,13 @@
                     <label>Road Surface</label>
                     <div class="value" id="roadSurface">--</div>
                 </div>
-                <div class="data-item">
-                    <label>Nearest Town</label>
-                    <div class="value" id="nearestTown">--</div>
-                </div>
-                <div class="data-item">
-                    <label>Distance to Town</label>
-                    <div class="value" id="townDistance">--</div>
+            </div>
+            
+            <!-- Nearby Towns Section -->
+            <div style="margin-top: 16px;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">🏘️ Nearby Towns (by driving time)</label>
+                <div id="nearbyTowns" style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="color: var(--text-muted); font-size: 13px;">Loading...</div>
                 </div>
             </div>
         </div>
@@ -678,10 +678,11 @@
                 document.getElementById('roadSurface').textContent = '--';
             }
 
-            // Find nearest town
-            showStatus('loading', 'Finding nearest town...');
+            // Find nearby towns with driving time
+            showStatus('loading', 'Finding nearby towns...');
             try {
-                const townQuery = `[out:json];node(around:50000,${lat},${lon})[place~"town|city|village"];out 1;`;
+                // Search wider radius, get more towns
+                const townQuery = `[out:json];node(around:80000,${lat},${lon})[place~"town|city|village"];out 20;`;
                 const townRes = await fetch('https://overpass-api.de/api/interpreter', {
                     method: 'POST',
                     body: townQuery
@@ -689,17 +690,71 @@
                 const townData = await townRes.json();
                 
                 if (townData.elements && townData.elements.length > 0) {
-                    const town = townData.elements[0];
-                    propertyData.nearestTown = town.tags.name;
-                    const distance = haversineDistance(lat, lon, town.lat, town.lon);
-                    propertyData.townDistance = distance;
+                    // Calculate straight-line distance for all towns first
+                    const townsWithDistance = townData.elements
+                        .filter(t => t.tags && t.tags.name)
+                        .map(town => ({
+                            name: town.tags.name,
+                            lat: town.lat,
+                            lon: town.lon,
+                            straightDist: haversineDistance(lat, lon, town.lat, town.lon)
+                        }))
+                        .sort((a, b) => a.straightDist - b.straightDist)
+                        .slice(0, 8); // Get closest 8 by straight line, then filter by driving
+
+                    // Get driving time for top candidates using OSRM
+                    showStatus('loading', 'Calculating driving times...');
+                    const townsWithDriving = [];
                     
-                    document.getElementById('nearestTown').textContent = propertyData.nearestTown;
-                    document.getElementById('townDistance').textContent = `${distance.toFixed(1)} mi`;
+                    for (const town of townsWithDistance) {
+                        try {
+                            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${town.lon},${town.lat}?overview=false`;
+                            const osrmRes = await fetch(osrmUrl);
+                            const osrmData = await osrmRes.json();
+                            
+                            if (osrmData.routes && osrmData.routes[0]) {
+                                const route = osrmData.routes[0];
+                                townsWithDriving.push({
+                                    ...town,
+                                    drivingMiles: (route.distance / 1609.34).toFixed(1),
+                                    drivingMinutes: Math.round(route.duration / 60)
+                                });
+                            }
+                        } catch (e) {
+                            // If OSRM fails for this town, skip it
+                            console.log('OSRM failed for', town.name);
+                        }
+                    }
+                    
+                    // Sort by driving time and take top 3
+                    townsWithDriving.sort((a, b) => a.drivingMinutes - b.drivingMinutes);
+                    const top3Towns = townsWithDriving.slice(0, 3);
+                    
+                    propertyData.nearbyTowns = top3Towns;
+                    propertyData.nearestTown = top3Towns[0]?.name || '--';
+                    propertyData.townDistance = top3Towns[0]?.drivingMiles || '--';
+                    
+                    // Display the towns
+                    const townsContainer = document.getElementById('nearbyTowns');
+                    if (top3Towns.length > 0) {
+                        townsContainer.innerHTML = top3Towns.map((town, i) => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);">
+                                <div>
+                                    <span style="font-weight: 500;">${town.name}</span>
+                                    <span style="color: var(--text-muted); font-size: 12px; margin-left: 8px;">${town.drivingMiles} mi</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <span style="color: ${town.drivingMinutes <= 20 ? 'var(--success)' : town.drivingMinutes <= 45 ? 'var(--warning)' : 'var(--danger)'}; font-weight: 600;">${town.drivingMinutes} min</span>
+                                    <a href="https://www.google.com/maps/dir/${lat},${lon}/${town.lat},${town.lon}" target="_blank" class="map-link" style="font-size: 11px;">Directions →</a>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        townsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No towns found within 50 miles</div>';
+                    }
                 }
             } catch (e) {
-                document.getElementById('nearestTown').textContent = '--';
-                document.getElementById('townDistance').textContent = '--';
+                document.getElementById('nearbyTowns').innerHTML = '<div style="color: var(--danger); font-size: 13px;">Failed to load town data</div>';
             }
 
             showStatus('success', 'Data fetched successfully');
@@ -829,8 +884,8 @@
             if (propertyData.soil && (propertyData.soil.toLowerCase().includes('rock') || propertyData.soil.toLowerCase().includes('outcrop'))) {
                 flags.push({ type: 'red', text: '⚠️ Rocky soil - may be difficult for building or septic' });
             }
-            if (propertyData.townDistance && propertyData.townDistance > 30) {
-                flags.push({ type: 'red', text: `⚠️ Remote location - ${propertyData.townDistance.toFixed(0)} miles to nearest town` });
+            if (propertyData.nearbyTowns && propertyData.nearbyTowns[0] && propertyData.nearbyTowns[0].drivingMinutes > 45) {
+                flags.push({ type: 'red', text: `⚠️ Remote location - ${propertyData.nearbyTowns[0].drivingMinutes} min drive to nearest town` });
             }
             
             // Green flags
