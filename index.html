@@ -233,6 +233,39 @@
             color: var(--success);
         }
         .hidden { display: none; }
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .autocomplete-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .autocomplete-item:last-child { border-bottom: none; }
+        .autocomplete-item:hover, .autocomplete-item.selected {
+            background: var(--surface-hover);
+        }
+        .autocomplete-item .main {
+            color: var(--text);
+            font-weight: 500;
+        }
+        .autocomplete-item .detail {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 2px;
+        }
         .actions {
             display: flex;
             gap: 8px;
@@ -308,15 +341,16 @@
         
         <div id="addressInput">
             <div class="input-row">
-                <div class="input-group" style="flex: 3;">
+                <div class="input-group" style="flex: 3; position: relative;">
                     <label>Address</label>
-                    <input type="text" id="address" placeholder="e.g., 29240 W Ash Creek Rd, Willcox, AZ">
+                    <input type="text" id="address" placeholder="Start typing an address..." autocomplete="off">
+                    <div id="addressSuggestions" class="autocomplete-dropdown hidden"></div>
                 </div>
                 <div class="input-group" style="flex: 1; display: flex; align-items: flex-end;">
                     <button onclick="lookupAddress()" id="lookupBtn" style="width: 100%;">Look Up</button>
                 </div>
             </div>
-            <p class="helper-text">💡 Tip: For rural addresses, include city and state. If not found, try coordinates mode.</p>
+            <p class="helper-text">💡 Type to see suggestions, or enter full address and click Look Up</p>
         </div>
         
         <div id="coordsInput" class="hidden">
@@ -617,6 +651,112 @@
 
         // Load saved evaluations on start
         document.addEventListener('DOMContentLoaded', loadSavedList);
+        
+        // Address autocomplete setup
+        document.addEventListener('DOMContentLoaded', function() {
+            const addressInput = document.getElementById('address');
+            const suggestionsDiv = document.getElementById('addressSuggestions');
+            let debounceTimer;
+            let selectedIndex = -1;
+            let suggestions = [];
+            
+            addressInput.addEventListener('input', function() {
+                const query = this.value.trim();
+                clearTimeout(debounceTimer);
+                
+                if (query.length < 3) {
+                    suggestionsDiv.classList.add('hidden');
+                    return;
+                }
+                
+                // Debounce API calls (300ms)
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lang=en&layer=house,street`);
+                        const data = await res.json();
+                        suggestions = data.features || [];
+                        
+                        if (suggestions.length === 0) {
+                            suggestionsDiv.classList.add('hidden');
+                            return;
+                        }
+                        
+                        suggestionsDiv.innerHTML = suggestions.map((f, i) => {
+                            const p = f.properties;
+                            const main = [p.housenumber, p.street].filter(Boolean).join(' ') || p.name || 'Unknown';
+                            const detail = [p.city, p.state, p.country].filter(Boolean).join(', ');
+                            return `<div class="autocomplete-item" data-index="${i}">
+                                <div class="main">${main}</div>
+                                <div class="detail">${detail}</div>
+                            </div>`;
+                        }).join('');
+                        
+                        suggestionsDiv.classList.remove('hidden');
+                        selectedIndex = -1;
+                    } catch (e) {
+                        console.log('Autocomplete error:', e);
+                    }
+                }, 300);
+            });
+            
+            // Handle keyboard navigation
+            addressInput.addEventListener('keydown', function(e) {
+                const items = suggestionsDiv.querySelectorAll('.autocomplete-item');
+                if (items.length === 0) return;
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                    updateSelection(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    updateSelection(items);
+                } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                    e.preventDefault();
+                    selectSuggestion(selectedIndex);
+                } else if (e.key === 'Escape') {
+                    suggestionsDiv.classList.add('hidden');
+                }
+            });
+            
+            function updateSelection(items) {
+                items.forEach((item, i) => {
+                    item.classList.toggle('selected', i === selectedIndex);
+                });
+            }
+            
+            // Handle click on suggestion
+            suggestionsDiv.addEventListener('click', function(e) {
+                const item = e.target.closest('.autocomplete-item');
+                if (item) {
+                    selectSuggestion(parseInt(item.dataset.index));
+                }
+            });
+            
+            function selectSuggestion(index) {
+                const feature = suggestions[index];
+                if (!feature) return;
+                
+                const p = feature.properties;
+                const parts = [p.housenumber, p.street, p.city, p.state, p.postcode, p.country].filter(Boolean);
+                addressInput.value = parts.join(', ');
+                suggestionsDiv.classList.add('hidden');
+                
+                // Store coordinates for direct lookup
+                if (feature.geometry && feature.geometry.coordinates) {
+                    propertyData.selectedLon = feature.geometry.coordinates[0];
+                    propertyData.selectedLat = feature.geometry.coordinates[1];
+                }
+            }
+            
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!addressInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+                    suggestionsDiv.classList.add('hidden');
+                }
+            });
+        });
 
         function setInputMode(mode) {
             inputMode = mode;
@@ -635,6 +775,19 @@
             showStatus('loading', 'Geocoding address...');
 
             try {
+                // Check if we have pre-selected coordinates from autocomplete
+                if (propertyData.selectedLat && propertyData.selectedLon) {
+                    propertyData.lat = propertyData.selectedLat;
+                    propertyData.lon = propertyData.selectedLon;
+                    propertyData.location = address;
+                    // Clear the pre-selected coords
+                    delete propertyData.selectedLat;
+                    delete propertyData.selectedLon;
+                    await fetchPropertyData();
+                    btn.disabled = false;
+                    return;
+                }
+                
                 // Try multiple geocoding strategies for rural addresses
                 let geoData = await tryGeocode(address);
                 
