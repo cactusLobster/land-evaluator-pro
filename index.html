@@ -323,13 +323,13 @@
             <div class="input-row">
                 <div class="input-group" style="flex: 3;">
                     <label>Coordinates</label>
-                    <input type="text" id="coordsPaste" placeholder="Paste from Google: (32.5106597, -110.1995082)">
+                    <input type="text" id="coordsPaste" placeholder="32.51, -110.19 or 31°32'06.2&quot;N 110°44'57.8&quot;W">
                 </div>
                 <div class="input-group" style="display: flex; align-items: flex-end;">
                     <button onclick="lookupCoords()" id="coordsBtn" style="width: 100%;">Fetch Data</button>
                 </div>
             </div>
-            <p class="helper-text">💡 Copy from Google Maps and paste directly - parentheses and all</p>
+            <p class="helper-text">💡 Supports decimal (32.51, -110.19) or DMS (31°32'06.2"N 110°44'57.8"W)</p>
             <input type="hidden" id="lat">
             <input type="hidden" id="lon">
         </div>
@@ -670,16 +670,25 @@
             const input = document.getElementById('coordsPaste').value.trim();
             if (!input) return alert('Please paste coordinates');
             
-            // Remove parentheses, brackets, and extra whitespace
-            let cleaned = input.replace(/[()[\]]/g, '').trim();
-            const match = cleaned.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+            let lat, lon;
             
-            if (!match) {
-                return alert('Could not parse coordinates. Try format: (32.51, -110.19)');
+            // Try DMS format first: 31°32'06.2"N 110°44'57.8"W
+            const dmsResult = parseDMS(input);
+            if (dmsResult) {
+                lat = dmsResult.lat;
+                lon = dmsResult.lon;
+            } else {
+                // Try decimal format: (32.51, -110.19) or 32.51, -110.19
+                let cleaned = input.replace(/[()[\]]/g, '').trim();
+                const match = cleaned.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+                
+                if (!match) {
+                    return alert('Could not parse coordinates.\n\nSupported formats:\n• Decimal: 32.51, -110.19\n• DMS: 31°32\'06.2"N 110°44\'57.8"W');
+                }
+                
+                lat = parseFloat(match[1]);
+                lon = parseFloat(match[2]);
             }
-            
-            const lat = parseFloat(match[1]);
-            const lon = parseFloat(match[2]);
             
             if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
                 return alert('Invalid coordinates');
@@ -1303,6 +1312,46 @@
                 'service': 'Service Road'
             };
             return types[type] || type;
+        }
+
+        function parseDMS(input) {
+            // Parse DMS format: 31°32'06.2"N 110°44'57.8"W
+            // Also handles: 31°32'06.2"N, 110°44'57.8"W (with comma)
+            // And variations like: 31° 32' 06.2" N 110° 44' 57.8" W
+            
+            // Normalize the input - replace various quote marks and degree symbols
+            let normalized = input
+                .replace(/[′']/g, "'")     // Normalize minutes symbol
+                .replace(/[″"]/g, '"')     // Normalize seconds symbol
+                .replace(/[°º]/g, '°');    // Normalize degree symbol
+            
+            // Pattern for DMS: degrees°minutes'seconds"direction
+            const dmsPattern = /(\d+)\s*°\s*(\d+)\s*['′]\s*([\d.]+)\s*["″]?\s*([NSns])\s*[,\s]+(\d+)\s*°\s*(\d+)\s*['′]\s*([\d.]+)\s*["″]?\s*([EWew])/;
+            
+            const match = normalized.match(dmsPattern);
+            if (!match) return null;
+            
+            // Parse latitude
+            const latDeg = parseFloat(match[1]);
+            const latMin = parseFloat(match[2]);
+            const latSec = parseFloat(match[3]);
+            const latDir = match[4].toUpperCase();
+            
+            // Parse longitude
+            const lonDeg = parseFloat(match[5]);
+            const lonMin = parseFloat(match[6]);
+            const lonSec = parseFloat(match[7]);
+            const lonDir = match[8].toUpperCase();
+            
+            // Convert to decimal degrees
+            let lat = latDeg + (latMin / 60) + (latSec / 3600);
+            let lon = lonDeg + (lonMin / 60) + (lonSec / 3600);
+            
+            // Apply direction (S and W are negative)
+            if (latDir === 'S') lat = -lat;
+            if (lonDir === 'W') lon = -lon;
+            
+            return { lat, lon };
         }
 
         function calculateHardinessZone(extremeMinF) {
