@@ -380,6 +380,14 @@
                 </div>
             </div>
             
+            <!-- Helper Research Links -->
+            <div style="margin-top: 16px;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">🔗 Research Links</label>
+                <div id="helperLinks" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <span style="color: var(--text-muted); font-size: 12px;">Enter location to generate links...</span>
+                </div>
+            </div>
+            
             <!-- Climate Data Section -->
             <div style="margin-top: 16px;">
                 <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">🌡️ Climate Data (3-Year Average)</label>
@@ -682,6 +690,17 @@
             document.getElementById('coords').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
             document.getElementById('mapLink').href = `https://www.google.com/maps?q=${lat},${lon}`;
             document.getElementById('location').textContent = propertyData.location.split(',').slice(0, 3).join(',');
+
+            // Generate helper research links
+            const linksContainer = document.getElementById('helperLinks');
+            linksContainer.innerHTML = `
+                <a href="https://earth.google.com/web/@${lat},${lon},0a,1000d,35y,0h,0t,0r" target="_blank" class="map-link" style="padding: 4px 8px; background: var(--surface-hover); border-radius: 4px; font-size: 11px;">🌍 Google Earth</a>
+                <a href="https://msc.fema.gov/portal/search?AddressQuery=${lat},${lon}#searchresultsanchor" target="_blank" class="map-link" style="padding: 4px 8px; background: var(--surface-hover); border-radius: 4px; font-size: 11px;">🌊 FEMA Flood Map</a>
+                <a href="https://gispub.epa.gov/radon/" target="_blank" class="map-link" style="padding: 4px 8px; background: var(--surface-hover); border-radius: 4px; font-size: 11px;">☢️ EPA Radon Map</a>
+                <a href="https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx" target="_blank" class="map-link" style="padding: 4px 8px; background: var(--surface-hover); border-radius: 4px; font-size: 11px;">🪴 USDA Soil Survey</a>
+                <a href="https://www.google.com/maps/@${lat},${lon},1000m/data=!3m1!1e3" target="_blank" class="map-link" style="padding: 4px 8px; background: var(--surface-hover); border-radius: 4px; font-size: 11px;">🛰️ Satellite View</a>
+                <a href="https://www.google.com/maps/dir/${lat},${lon}/" target="_blank" class="map-link" style="padding: 4px 8px; background: var(--surface-hover); border-radius: 4px; font-size: 11px;">🚗 Get Directions</a>
+            `;
 
             // Fetch elevation
             showStatus('loading', 'Fetching elevation...');
@@ -1750,5 +1769,22 @@
             }
         }
     </script>
+    
+    <!-- Data Sources Footer -->
+    <div class="card" style="margin-top: 24px; opacity: 0.8;">
+        <h2 style="font-size: 13px; margin-bottom: 12px;">📊 Data Sources</h2>
+        <div style="font-size: 11px; color: var(--text-muted); line-height: 1.8;">
+            <strong>Geocoding:</strong> OpenStreetMap Nominatim • 
+            <strong>Elevation:</strong> Open-Elevation API • 
+            <strong>Soil:</strong> USDA NRCS Web Soil Survey • 
+            <strong>Roads:</strong> OpenStreetMap Overpass • 
+            <strong>Flood Zones:</strong> FEMA National Flood Hazard Layer • 
+            <strong>Climate:</strong> Open-Meteo Historical Archive (ERA5) • 
+            <strong>Wildfire:</strong> USFS Wildfire Hazard Potential 2023 • 
+            <strong>Routing:</strong> OSRM (Project-OSRM)
+            <br><br>
+            <em>Note: This tool provides estimates for preliminary research only. Always verify data with official sources and conduct professional site evaluations before purchasing land.</em>
+        </div>
+    </div>
 </body>
 </html>
