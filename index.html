@@ -420,6 +420,10 @@
                         <label>Wildfire Risk</label>
                         <div class="value" id="wildfireRisk">--</div>
                     </div>
+                    <div class="data-item">
+                        <label>EPA Radon Zone</label>
+                        <div class="value" id="radonZone">--</div>
+                    </div>
                 </div>
             </div>
             
@@ -953,6 +957,43 @@
                 document.getElementById('wildfireRisk').innerHTML = '<span class="warning">Unable to fetch</span>';
             }
 
+            // Fetch EPA Radon Zone
+            showStatus('loading', 'Checking radon risk...');
+            try {
+                const radonUrl = `https://geodata.epa.gov/arcgis/rest/services/ORD/ROE_Radon/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=RadonZone,NAME,StateName&returnGeometry=false&f=json`;
+                
+                const radonRes = await fetch(radonUrl);
+                const radonData = await radonRes.json();
+                
+                const radonEl = document.getElementById('radonZone');
+                
+                if (radonData.features && radonData.features.length > 0) {
+                    const attrs = radonData.features[0].attributes;
+                    const zone = attrs.RadonZone;
+                    
+                    propertyData.radonZone = {
+                        zone: zone,
+                        county: attrs.NAME,
+                        state: attrs.StateName
+                    };
+                    
+                    // EPA Radon Zones: 1=High, 2=Moderate, 3=Low
+                    const zoneInfo = {
+                        1: { name: 'Zone 1 - High', class: 'danger', desc: '(>4 pCi/L predicted)' },
+                        2: { name: 'Zone 2 - Moderate', class: 'warning', desc: '(2-4 pCi/L predicted)' },
+                        3: { name: 'Zone 3 - Low', class: 'good', desc: '(<2 pCi/L predicted)' }
+                    }[zone] || { name: `Zone ${zone}`, class: '', desc: '' };
+                    
+                    radonEl.innerHTML = `<span class="${zoneInfo.class}">${zoneInfo.name}</span> <span style="font-size: 10px; color: var(--text-muted);">${zoneInfo.desc}</span>`;
+                } else {
+                    propertyData.radonZone = null;
+                    radonEl.innerHTML = '<span class="warning">Data unavailable</span>';
+                }
+            } catch (e) {
+                console.log('Radon zone fetch failed:', e);
+                document.getElementById('radonZone').innerHTML = '<span class="warning">Unable to fetch</span>';
+            }
+
             // Find nearby towns with driving time
             showStatus('loading', 'Finding nearby towns...');
             try {
@@ -1468,6 +1509,15 @@
                 }
             }
             
+            // Radon zone flags
+            if (propertyData.radonZone) {
+                if (propertyData.radonZone.zone === 1) {
+                    flags.push({ type: 'red', text: `☢️ EPA Radon Zone 1 (High) - radon testing strongly recommended before building` });
+                } else if (propertyData.radonZone.zone === 3) {
+                    flags.push({ type: 'green', text: `✓ EPA Radon Zone 3 (Low) - low radon risk` });
+                }
+            }
+            
             // Climate-related flags
             if (propertyData.climate) {
                 if (propertyData.climate.annualPrecip < 10) {
@@ -1718,6 +1768,11 @@
             
             if (propertyData.wildfireRisk) {
                 md += `- **Wildfire Risk:** ${propertyData.wildfireRisk.name}\n`;
+            }
+            
+            if (propertyData.radonZone) {
+                const radonNames = { 1: 'High', 2: 'Moderate', 3: 'Low' };
+                md += `- **EPA Radon Zone:** ${propertyData.radonZone.zone} (${radonNames[propertyData.radonZone.zone] || 'Unknown'})\n`;
             }
             
             if (propertyData.emergencyServices && propertyData.emergencyServices.length > 0) {
