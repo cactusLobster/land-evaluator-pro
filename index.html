@@ -318,23 +318,17 @@
         
         <div id="coordsInput" class="hidden">
             <div class="input-row">
-                <div class="input-group" style="flex: 2;">
-                    <label>Paste Coordinates</label>
-                    <input type="text" id="coordsPaste" placeholder="e.g., (32.5106597, -110.1995082)" oninput="parseCoords()">
-                </div>
-                <div class="input-group">
-                    <label>Latitude</label>
-                    <input type="text" id="lat" placeholder="32.2529">
-                </div>
-                <div class="input-group">
-                    <label>Longitude</label>
-                    <input type="text" id="lon" placeholder="-109.8315">
+                <div class="input-group" style="flex: 3;">
+                    <label>Coordinates</label>
+                    <input type="text" id="coordsPaste" placeholder="Paste from Google: (32.5106597, -110.1995082)">
                 </div>
                 <div class="input-group" style="display: flex; align-items: flex-end;">
                     <button onclick="lookupCoords()" id="coordsBtn" style="width: 100%;">Fetch Data</button>
                 </div>
             </div>
-            <p class="helper-text">💡 Paste directly from Google Maps - supports formats like (32.51, -110.19) or just 32.51, -110.19</p>
+            <p class="helper-text">💡 Copy from Google Maps and paste directly - parentheses and all</p>
+            <input type="hidden" id="lat">
+            <input type="hidden" id="lon">
         </div>
         
         <div id="status" class="hidden"></div>
@@ -521,29 +515,6 @@
             document.getElementById('coordsInput').classList.toggle('hidden', mode !== 'coords');
         }
 
-        function parseCoords() {
-            const input = document.getElementById('coordsPaste').value.trim();
-            if (!input) return;
-            
-            // Remove parentheses, brackets, and extra whitespace
-            let cleaned = input.replace(/[()[\]]/g, '').trim();
-            
-            // Try to extract two numbers (lat, lon)
-            // Supports: "32.51, -110.19" or "32.51 -110.19" or "32.51,-110.19"
-            const match = cleaned.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
-            
-            if (match) {
-                const lat = parseFloat(match[1]);
-                const lon = parseFloat(match[2]);
-                
-                // Basic validation: lat should be -90 to 90, lon -180 to 180
-                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
-                    document.getElementById('lat').value = lat;
-                    document.getElementById('lon').value = lon;
-                }
-            }
-        }
-
         async function lookupAddress() {
             const address = document.getElementById('address').value.trim();
             if (!address) return alert('Please enter an address');
@@ -584,11 +555,23 @@
         }
 
         async function lookupCoords() {
-            const lat = parseFloat(document.getElementById('lat').value);
-            const lon = parseFloat(document.getElementById('lon').value);
+            // Parse coordinates from paste field
+            const input = document.getElementById('coordsPaste').value.trim();
+            if (!input) return alert('Please paste coordinates');
             
-            if (isNaN(lat) || isNaN(lon)) {
-                return alert('Please enter valid coordinates');
+            // Remove parentheses, brackets, and extra whitespace
+            let cleaned = input.replace(/[()[\]]/g, '').trim();
+            const match = cleaned.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+            
+            if (!match) {
+                return alert('Could not parse coordinates. Try format: (32.51, -110.19)');
+            }
+            
+            const lat = parseFloat(match[1]);
+            const lon = parseFloat(match[2]);
+            
+            if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                return alert('Invalid coordinates');
             }
             
             const btn = document.getElementById('coordsBtn');
