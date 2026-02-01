@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Land Evaluator Pro</title>
+    <!-- Leaflet CSS/JS for interactive map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         :root {
             --bg: #0d1117;
@@ -359,12 +362,56 @@
                     <div class="value" id="soil">--</div>
                 </div>
                 <div class="data-item">
+                    <label>Septic Suitability</label>
+                    <div class="value" id="septicSuit">--</div>
+                </div>
+                <div class="data-item">
                     <label>Road Type</label>
                     <div class="value" id="roadType">--</div>
                 </div>
                 <div class="data-item">
                     <label>Road Surface</label>
                     <div class="value" id="roadSurface">--</div>
+                </div>
+                <div class="data-item">
+                    <label>FEMA Flood Zone</label>
+                    <div class="value" id="floodZone">--</div>
+                    <a href="#" id="femaMapLink" class="map-link" target="_blank" style="display: none;">View FEMA Map →</a>
+                </div>
+            </div>
+            
+            <!-- Climate Data Section -->
+            <div style="margin-top: 16px;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">🌡️ Climate Data (3-Year Average)</label>
+                <div class="data-grid" id="climateGrid">
+                    <div class="data-item">
+                        <label>Annual Rainfall</label>
+                        <div class="value" id="annualPrecip">--</div>
+                    </div>
+                    <div class="data-item">
+                        <label>USDA Hardiness Zone</label>
+                        <div class="value" id="hardinessZone">--</div>
+                    </div>
+                    <div class="data-item">
+                        <label>Avg High / Low</label>
+                        <div class="value" id="avgTemps">--</div>
+                    </div>
+                    <div class="data-item">
+                        <label>Frost Days / Year</label>
+                        <div class="value" id="frostDays">--</div>
+                    </div>
+                    <div class="data-item">
+                        <label>Hot Days (95°F+) / Year</label>
+                        <div class="value" id="hotDays">--</div>
+                    </div>
+                    <div class="data-item">
+                        <label>Growing Season</label>
+                        <div class="value" id="growingSeason">--</div>
+                    </div>
+                    <div class="data-item">
+                        <label>Wildfire Risk</label>
+                        <div class="value" id="wildfireRisk">--</div>
+                    </div>
                 </div>
             </div>
             
@@ -373,6 +420,39 @@
                 <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">🏘️ Nearby Towns (by driving time)</label>
                 <div id="nearbyTowns" style="display: flex; flex-direction: column; gap: 8px;">
                     <div style="color: var(--text-muted); font-size: 13px;">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Emergency Services Section -->
+            <div style="margin-top: 16px;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">🚒 Emergency Services (driving time)</label>
+                <div id="emergencyServices" style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="color: var(--text-muted); font-size: 13px;">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Map Section -->
+        <div class="card" id="mapCard">
+            <h2>🗺️ Property Map</h2>
+            <div id="propertyMap" style="height: 300px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border);"></div>
+            <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
+                <button class="secondary small" onclick="openExternalMap('google')">📍 Google Maps</button>
+                <button class="secondary small" onclick="openExternalMap('satellite')">🛰️ Satellite</button>
+                <button class="secondary small" onclick="openExternalMap('earth')">🌍 Google Earth</button>
+                <button class="secondary small" onclick="openExternalMap('topo')">⛰️ Topo Map</button>
+            </div>
+            
+            <!-- Research Links Section -->
+            <div style="margin-top: 16px;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">🔗 Research Links</label>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px;" id="researchLinks">
+                    <a href="#" class="map-link" id="linkFema" target="_blank" style="padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; text-decoration: none;">FEMA Flood Map →</a>
+                    <a href="#" class="map-link" id="linkWildfire" target="_blank" style="padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; text-decoration: none;">USFS Fire Risk →</a>
+                    <a href="#" class="map-link" id="linkSoils" target="_blank" style="padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; text-decoration: none;">USDA Soil Survey →</a>
+                    <a href="#" class="map-link" id="linkCounty" target="_blank" style="padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; text-decoration: none;">County Assessor →</a>
+                    <a href="#" class="map-link" id="linkHistorical" target="_blank" style="padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; text-decoration: none;">Historical Imagery →</a>
+                    <a href="#" class="map-link" id="linkLandwatch" target="_blank" style="padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; text-decoration: none;">LandWatch Comps →</a>
                 </div>
             </div>
         </div>
@@ -640,6 +720,33 @@
                     } else if (propertyData.soil.toLowerCase().includes('rock') || propertyData.soil.toLowerCase().includes('gravel')) {
                         soilEl.className = 'value warning';
                     }
+                    
+                    // Estimate septic suitability from soil type
+                    const septicEl = document.getElementById('septicSuit');
+                    const soilLower = propertyData.soil.toLowerCase();
+                    
+                    // Good drainage soils for septic
+                    if (soilLower.includes('loam') && !soilLower.includes('clay')) {
+                        propertyData.septicSuitability = 'Good';
+                        septicEl.innerHTML = '<span class="good">Good</span>';
+                        septicEl.title = 'Loamy soils typically have good drainage for septic systems';
+                    } else if (soilLower.includes('sand') && !soilLower.includes('clay')) {
+                        propertyData.septicSuitability = 'Fair';
+                        septicEl.innerHTML = '<span class="warning">Fair</span>';
+                        septicEl.title = 'Sandy soils drain quickly - may need engineered system';
+                    } else if (soilLower.includes('clay') || soilLower.includes('caliche')) {
+                        propertyData.septicSuitability = 'Poor';
+                        septicEl.innerHTML = '<span class="danger">Poor</span>';
+                        septicEl.title = 'Clay soils have slow drainage - may require alternative system';
+                    } else if (soilLower.includes('rock') || soilLower.includes('outcrop') || soilLower.includes('gravel')) {
+                        propertyData.septicSuitability = 'Challenging';
+                        septicEl.innerHTML = '<span class="danger">Challenging</span>';
+                        septicEl.title = 'Rocky soils may require blasting or alternative system';
+                    } else {
+                        propertyData.septicSuitability = 'Unknown';
+                        septicEl.innerHTML = '<span class="warning">Unknown</span>';
+                        septicEl.title = 'Consult local health department for perc test requirements';
+                    }
                 }
             } catch (e) {
                 document.getElementById('soil').textContent = 'Unable to fetch';
@@ -676,6 +783,155 @@
             } catch (e) {
                 document.getElementById('roadType').textContent = '--';
                 document.getElementById('roadSurface').textContent = '--';
+            }
+
+            // Fetch FEMA flood zone data
+            showStatus('loading', 'Checking FEMA flood zones...');
+            try {
+                const femaUrl = `https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query?where=1%3D1&geometry=${lon},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&outFields=FLD_ZONE,ZONE_SUBTY,SFHA_TF&returnGeometry=false&f=json`;
+                const femaRes = await fetch(femaUrl);
+                const femaData = await femaRes.json();
+                
+                const floodZoneEl = document.getElementById('floodZone');
+                const femaLinkEl = document.getElementById('femaMapLink');
+                
+                if (femaData.features && femaData.features.length > 0) {
+                    const attrs = femaData.features[0].attributes;
+                    propertyData.floodZone = attrs.FLD_ZONE;
+                    propertyData.floodZoneSubtype = attrs.ZONE_SUBTY;
+                    propertyData.inSFHA = attrs.SFHA_TF === 'T'; // Special Flood Hazard Area
+                    
+                    // Format flood zone display
+                    const zoneInfo = getFloodZoneInfo(attrs.FLD_ZONE, attrs.ZONE_SUBTY);
+                    floodZoneEl.innerHTML = `<span class="${zoneInfo.riskClass}">${attrs.FLD_ZONE}</span> <span style="font-size: 11px; color: var(--text-muted);">${zoneInfo.label}</span>`;
+                    
+                    // Auto-select flood dropdown based on FEMA data
+                    const floodDropdown = document.getElementById('flood');
+                    if (zoneInfo.dropdownValue !== null) {
+                        floodDropdown.value = zoneInfo.dropdownValue;
+                    }
+                } else {
+                    propertyData.floodZone = 'Not mapped';
+                    floodZoneEl.innerHTML = '<span class="warning">Not mapped</span>';
+                    floodZoneEl.title = 'This location is not covered by FEMA flood mapping';
+                }
+                
+                // Add FEMA flood map link
+                femaLinkEl.href = `https://msc.fema.gov/portal/search?AddressQuery=${lat},${lon}#searchresultsanchor`;
+                femaLinkEl.style.display = 'inline';
+                
+            } catch (e) {
+                console.log('FEMA flood zone fetch failed:', e);
+                document.getElementById('floodZone').innerHTML = '<span class="warning">Unable to fetch</span>';
+            }
+
+            // Fetch climate data (3-year historical average)
+            showStatus('loading', 'Fetching climate data...');
+            try {
+                // Get last 3 full years of data
+                const endYear = new Date().getFullYear() - 1;
+                const startYear = endYear - 2;
+                const climateUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${startYear}-01-01&end_date=${endYear}-12-31&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto&temperature_unit=fahrenheit&precipitation_unit=inch`;
+                
+                const climateRes = await fetch(climateUrl);
+                const climateData = await climateRes.json();
+                
+                if (climateData.daily) {
+                    const daily = climateData.daily;
+                    const numYears = 3;
+                    
+                    // Calculate climate metrics
+                    const totalPrecip = daily.precipitation_sum.reduce((a, b) => a + (b || 0), 0);
+                    const avgAnnualPrecip = totalPrecip / numYears;
+                    const avgHigh = daily.temperature_2m_max.reduce((a, b) => a + b, 0) / daily.temperature_2m_max.length;
+                    const avgLow = daily.temperature_2m_min.reduce((a, b) => a + b, 0) / daily.temperature_2m_min.length;
+                    const extremeMin = Math.min(...daily.temperature_2m_min);
+                    const frostDays = daily.temperature_2m_min.filter(t => t <= 32).length / numYears;
+                    const hotDays = daily.temperature_2m_max.filter(t => t >= 95).length / numYears;
+                    
+                    // Store for later use
+                    propertyData.climate = {
+                        annualPrecip: avgAnnualPrecip,
+                        avgHigh: avgHigh,
+                        avgLow: avgLow,
+                        extremeMin: extremeMin,
+                        frostDaysPerYear: frostDays,
+                        hotDaysPerYear: hotDays,
+                        hardinessZone: calculateHardinessZone(extremeMin)
+                    };
+                    
+                    // Display climate data
+                    const precipEl = document.getElementById('annualPrecip');
+                    precipEl.textContent = `${avgAnnualPrecip.toFixed(1)}" / year`;
+                    if (avgAnnualPrecip < 15) precipEl.className = 'value warning';
+                    else if (avgAnnualPrecip < 8) precipEl.className = 'value danger';
+                    else precipEl.className = 'value';
+                    
+                    document.getElementById('hardinessZone').textContent = propertyData.climate.hardinessZone;
+                    document.getElementById('avgTemps').textContent = `${Math.round(avgHigh)}°F / ${Math.round(avgLow)}°F`;
+                    
+                    const frostEl = document.getElementById('frostDays');
+                    frostEl.textContent = Math.round(frostDays);
+                    if (frostDays > 150) frostEl.className = 'value danger';
+                    else if (frostDays > 90) frostEl.className = 'value warning';
+                    else frostEl.className = 'value good';
+                    
+                    const hotEl = document.getElementById('hotDays');
+                    hotEl.textContent = Math.round(hotDays);
+                    if (hotDays > 60) hotEl.className = 'value danger';
+                    else if (hotDays > 30) hotEl.className = 'value warning';
+                    else hotEl.className = 'value good';
+                    
+                    // Estimate growing season (365 - frost days, roughly)
+                    const growingSeason = Math.round(365 - frostDays * 1.2); // Approximate
+                    document.getElementById('growingSeason').textContent = `~${growingSeason} days`;
+                    propertyData.climate.growingSeason = growingSeason;
+                }
+            } catch (e) {
+                console.log('Climate data fetch failed:', e);
+                document.getElementById('annualPrecip').textContent = '--';
+            }
+
+            // Fetch Wildfire Hazard Potential from USFS
+            showStatus('loading', 'Checking wildfire risk...');
+            try {
+                const fireUrl = `https://apps.fs.usda.gov/arcx/rest/services/RDW_Wildfire/RMRS_WildfireHazardPotential_2023/MapServer/identify?geometry=${lon},${lat}&geometryType=esriGeometryPoint&sr=4326&layers=visible:1&tolerance=1&mapExtent=${lon-2},${lat-2},${lon+2},${lat+2}&imageDisplay=100,100,96&returnGeometry=false&f=json`;
+                
+                const fireRes = await fetch(fireUrl);
+                const fireData = await fireRes.json();
+                
+                const fireEl = document.getElementById('wildfireRisk');
+                
+                if (fireData.results && fireData.results.length > 0) {
+                    const attrs = fireData.results[0].attributes;
+                    const riskValue = parseInt(attrs['Raster.VALUE']);
+                    const riskName = attrs['Raster.Classname'];
+                    
+                    propertyData.wildfireRisk = {
+                        value: riskValue,
+                        name: riskName
+                    };
+                    
+                    // Color code based on risk level
+                    let riskClass = '';
+                    if (riskValue >= 4) riskClass = 'danger';
+                    else if (riskValue === 3) riskClass = 'warning';
+                    else if (riskValue <= 2 && riskValue >= 1) riskClass = 'good';
+                    
+                    fireEl.innerHTML = `<span class="${riskClass}">${riskName}</span>`;
+                    
+                    // If non-burnable (water, urban, etc.), note it
+                    if (riskValue === 6) {
+                        fireEl.innerHTML = '<span class="good">Non-burnable</span>';
+                        fireEl.title = 'Area classified as non-burnable (water, urban, or bare ground)';
+                    }
+                } else {
+                    propertyData.wildfireRisk = null;
+                    fireEl.innerHTML = '<span class="warning">Data unavailable</span>';
+                }
+            } catch (e) {
+                console.log('Wildfire risk fetch failed:', e);
+                document.getElementById('wildfireRisk').innerHTML = '<span class="warning">Unable to fetch</span>';
             }
 
             // Find nearby towns with driving time
@@ -757,8 +1013,202 @@
                 document.getElementById('nearbyTowns').innerHTML = '<div style="color: var(--danger); font-size: 13px;">Failed to load town data</div>';
             }
 
+            // Find emergency services (fire stations & hospitals)
+            showStatus('loading', 'Finding emergency services...');
+            try {
+                // Query for fire stations and hospitals within 50km
+                const emergencyQuery = `[out:json][timeout:25];
+                    (
+                        node(around:50000,${lat},${lon})[amenity=fire_station];
+                        way(around:50000,${lat},${lon})[amenity=fire_station];
+                        node(around:50000,${lat},${lon})[amenity=hospital];
+                        way(around:50000,${lat},${lon})[amenity=hospital];
+                    );
+                    out center tags;`;
+                
+                const emergencyRes = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: emergencyQuery
+                });
+                const emergencyData = await emergencyRes.json();
+                
+                const emergencyContainer = document.getElementById('emergencyServices');
+                
+                if (emergencyData.elements && emergencyData.elements.length > 0) {
+                    // Separate fire stations and hospitals
+                    const fireStations = emergencyData.elements.filter(e => 
+                        e.tags && e.tags.amenity === 'fire_station'
+                    ).map(e => ({
+                        name: e.tags.name || 'Fire Station',
+                        type: 'fire',
+                        lat: e.lat || e.center?.lat,
+                        lon: e.lon || e.center?.lon,
+                        straightDist: haversineDistance(lat, lon, e.lat || e.center?.lat, e.lon || e.center?.lon)
+                    })).sort((a, b) => a.straightDist - b.straightDist).slice(0, 3);
+                    
+                    const hospitals = emergencyData.elements.filter(e => 
+                        e.tags && e.tags.amenity === 'hospital'
+                    ).map(e => ({
+                        name: e.tags.name || 'Hospital',
+                        type: 'hospital',
+                        lat: e.lat || e.center?.lat,
+                        lon: e.lon || e.center?.lon,
+                        straightDist: haversineDistance(lat, lon, e.lat || e.center?.lat, e.lon || e.center?.lon)
+                    })).sort((a, b) => a.straightDist - b.straightDist).slice(0, 2);
+                    
+                    // Get driving times for closest of each
+                    const toCheck = [...fireStations.slice(0, 2), ...hospitals.slice(0, 1)];
+                    const servicesWithDriving = [];
+                    
+                    for (const svc of toCheck) {
+                        if (!svc.lat || !svc.lon) continue;
+                        try {
+                            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${svc.lon},${svc.lat}?overview=false`;
+                            const osrmRes = await fetch(osrmUrl);
+                            const osrmData = await osrmRes.json();
+                            
+                            if (osrmData.routes && osrmData.routes[0]) {
+                                servicesWithDriving.push({
+                                    ...svc,
+                                    drivingMiles: (osrmData.routes[0].distance / 1609.34).toFixed(1),
+                                    drivingMinutes: Math.round(osrmData.routes[0].duration / 60)
+                                });
+                            }
+                        } catch (e) {
+                            console.log('OSRM failed for', svc.name);
+                        }
+                    }
+                    
+                    propertyData.emergencyServices = servicesWithDriving;
+                    
+                    // Display emergency services
+                    if (servicesWithDriving.length > 0) {
+                        emergencyContainer.innerHTML = servicesWithDriving.map(svc => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);">
+                                <div>
+                                    <span style="font-weight: 500;">${svc.type === 'fire' ? '🚒' : '🏥'} ${svc.name}</span>
+                                    <span style="color: var(--text-muted); font-size: 12px; margin-left: 8px;">${svc.drivingMiles} mi</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <span style="color: ${svc.drivingMinutes <= 15 ? 'var(--success)' : svc.drivingMinutes <= 30 ? 'var(--warning)' : 'var(--danger)'}; font-weight: 600;">${svc.drivingMinutes} min</span>
+                                    <a href="https://www.google.com/maps/dir/${lat},${lon}/${svc.lat},${svc.lon}" target="_blank" class="map-link" style="font-size: 11px;">Directions →</a>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        emergencyContainer.innerHTML = '<div style="color: var(--warning); font-size: 13px;">No emergency services found within 30 miles</div>';
+                    }
+                } else {
+                    emergencyContainer.innerHTML = '<div style="color: var(--warning); font-size: 13px;">No emergency services data available</div>';
+                }
+            } catch (e) {
+                console.log('Emergency services fetch failed:', e);
+                document.getElementById('emergencyServices').innerHTML = '<div style="color: var(--danger); font-size: 13px;">Failed to load emergency services</div>';
+            }
+
             showStatus('success', 'Data fetched successfully');
             document.getElementById('results').classList.remove('hidden');
+            
+            // Initialize interactive map
+            initPropertyMap();
+            
+            // Populate research links
+            populateResearchLinks();
+        }
+
+        let propertyMap = null;
+        
+        function initPropertyMap() {
+            const { lat, lon } = propertyData;
+            
+            // Remove existing map if any
+            if (propertyMap) {
+                propertyMap.remove();
+            }
+            
+            // Create map
+            propertyMap = L.map('propertyMap').setView([lat, lon], 13);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(propertyMap);
+            
+            // Add property marker
+            const propertyMarker = L.marker([lat, lon], {
+                title: 'Property Location'
+            }).addTo(propertyMap);
+            propertyMarker.bindPopup('<b>Property Location</b><br>' + (propertyData.location?.split(',')[0] || 'Selected Property'));
+            
+            // Add nearby town markers if available
+            if (propertyData.nearbyTowns && propertyData.nearbyTowns.length > 0) {
+                propertyData.nearbyTowns.forEach(town => {
+                    const townMarker = L.circleMarker([town.lat, town.lon], {
+                        radius: 8,
+                        fillColor: '#58a6ff',
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(propertyMap);
+                    townMarker.bindPopup(`<b>${town.name}</b><br>${town.drivingMiles} mi (${town.drivingMinutes} min)`);
+                });
+                
+                // Fit bounds to show property and nearest town
+                const bounds = L.latLngBounds([
+                    [lat, lon],
+                    [propertyData.nearbyTowns[0].lat, propertyData.nearbyTowns[0].lon]
+                ]);
+                propertyMap.fitBounds(bounds.pad(0.2));
+            }
+        }
+        
+        function populateResearchLinks() {
+            const { lat, lon } = propertyData;
+            
+            // FEMA Flood Map
+            document.getElementById('linkFema').href = `https://msc.fema.gov/portal/search?AddressQuery=${lat},${lon}#searchresultsanchor`;
+            
+            // USFS Wildfire Risk Viewer
+            document.getElementById('linkWildfire').href = `https://www.arcgis.com/apps/mapviewer/index.html?webmap=c1b3cd5bec2c4568aff4c0fba89f4a23&center=${lon},${lat}&level=12`;
+            
+            // USDA Web Soil Survey
+            document.getElementById('linkSoils').href = `https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx?q=${lat},${lon}`;
+            
+            // County Assessor (Google search as fallback)
+            const locationParts = (propertyData.location || '').split(',');
+            const county = locationParts.find(p => p.toLowerCase().includes('county'))?.trim() || '';
+            const state = locationParts.slice(-2, -1)[0]?.trim() || '';
+            document.getElementById('linkCounty').href = `https://www.google.com/search?q=${encodeURIComponent(county + ' ' + state + ' assessor property search')}`;
+            
+            // Google Earth Historical Imagery
+            document.getElementById('linkHistorical').href = `https://earth.google.com/web/@${lat},${lon},1000a,1000d,35y,0h,0t,0r`;
+            
+            // LandWatch comparable listings
+            document.getElementById('linkLandwatch').href = `https://www.landwatch.com/land?minAcre=10&maxPrice=100000&lat=${lat}&lng=${lon}&radius=50`;
+        }
+        
+        function openExternalMap(type) {
+            const { lat, lon } = propertyData;
+            let url = '';
+            
+            switch(type) {
+                case 'google':
+                    url = `https://www.google.com/maps?q=${lat},${lon}`;
+                    break;
+                case 'satellite':
+                    url = `https://www.google.com/maps/@${lat},${lon},2000m/data=!3m1!1e3`;
+                    break;
+                case 'earth':
+                    url = `https://earth.google.com/web/@${lat},${lon},1000a,5000d,35y,0h,0t,0r`;
+                    break;
+                case 'topo':
+                    url = `https://caltopo.com/map.html#ll=${lat},${lon}&z=14&b=t`;
+                    break;
+            }
+            
+            if (url) window.open(url, '_blank');
         }
 
         function formatRoadType(type) {
@@ -774,6 +1224,89 @@
                 'service': 'Service Road'
             };
             return types[type] || type;
+        }
+
+        function calculateHardinessZone(extremeMinF) {
+            // USDA Plant Hardiness Zones based on average annual extreme minimum temperature
+            // Each zone covers 10°F range, with a/b subdivisions covering 5°F each
+            const zones = [
+                { min: -60, zone: '1a' }, { min: -55, zone: '1b' },
+                { min: -50, zone: '2a' }, { min: -45, zone: '2b' },
+                { min: -40, zone: '3a' }, { min: -35, zone: '3b' },
+                { min: -30, zone: '4a' }, { min: -25, zone: '4b' },
+                { min: -20, zone: '5a' }, { min: -15, zone: '5b' },
+                { min: -10, zone: '6a' }, { min: -5, zone: '6b' },
+                { min: 0, zone: '7a' }, { min: 5, zone: '7b' },
+                { min: 10, zone: '8a' }, { min: 15, zone: '8b' },
+                { min: 20, zone: '9a' }, { min: 25, zone: '9b' },
+                { min: 30, zone: '10a' }, { min: 35, zone: '10b' },
+                { min: 40, zone: '11a' }, { min: 45, zone: '11b' },
+                { min: 50, zone: '12a' }, { min: 55, zone: '12b' },
+                { min: 60, zone: '13a' }, { min: 65, zone: '13b' }
+            ];
+            
+            for (let i = zones.length - 1; i >= 0; i--) {
+                if (extremeMinF >= zones[i].min) {
+                    return zones[i].zone;
+                }
+            }
+            return '1a'; // Coldest
+        }
+
+        function getFloodZoneInfo(zone, subtype) {
+            // FEMA Flood Zone Classifications
+            // High Risk (SFHA - Special Flood Hazard Areas):
+            // A, AE, AH, AO, AR, A99 - 1% annual chance flood (100-year)
+            // V, VE - Coastal high hazard with wave action
+            // Moderate Risk:
+            // X (shaded), B - 0.2% annual chance (500-year)
+            // Minimal Risk:
+            // X (unshaded), C - Minimal flood hazard
+            // D - Undetermined risk
+            
+            const highRisk = ['A', 'AE', 'AH', 'AO', 'AR', 'A99', 'V', 'VE'];
+            const moderateRisk = ['B'];
+            
+            // Check if X zone is shaded (moderate) or unshaded (minimal)
+            const isXShaded = zone === 'X' && subtype && (
+                subtype.includes('0.2 PCT') || 
+                subtype.includes('500') ||
+                subtype.includes('MODERATE')
+            );
+            
+            if (highRisk.includes(zone)) {
+                let label = '1% annual flood risk';
+                if (zone.startsWith('V')) label = 'Coastal high hazard';
+                return { 
+                    riskClass: 'danger', 
+                    label: label,
+                    dropdownValue: '1' // High risk
+                };
+            } else if (moderateRisk.includes(zone) || isXShaded) {
+                return { 
+                    riskClass: 'warning', 
+                    label: '0.2% annual flood risk',
+                    dropdownValue: '3' // Moderate
+                };
+            } else if (zone === 'X') {
+                return { 
+                    riskClass: 'good', 
+                    label: 'Minimal flood hazard',
+                    dropdownValue: '5' // Minimal
+                };
+            } else if (zone === 'D') {
+                return { 
+                    riskClass: 'warning', 
+                    label: 'Undetermined risk',
+                    dropdownValue: '0' // Unknown
+                };
+            }
+            
+            return { 
+                riskClass: '', 
+                label: subtype || '',
+                dropdownValue: null
+            };
         }
 
         function haversineDistance(lat1, lon1, lat2, lon2) {
@@ -878,6 +1411,9 @@
                 flags.push({ type: 'red', text: '⚠️ Dirt road access - may be impassable in bad weather' });
             }
             if (flood === 1) flags.push({ type: 'red', text: '🚨 High flood risk zone - check insurance requirements' });
+            if (propertyData.inSFHA) {
+                flags.push({ type: 'red', text: `🚨 FEMA Zone ${propertyData.floodZone} - In Special Flood Hazard Area (flood insurance likely required)` });
+            }
             if (price && acreage && (price / acreage) > 5000) {
                 flags.push({ type: 'red', text: '⚠️ Price per acre above typical rural land average' });
             }
@@ -896,6 +1432,73 @@
             }
             if (price && acreage && (price / acreage) < 1500) {
                 flags.push({ type: 'green', text: '✓ Below-average price per acre' });
+            }
+            if (propertyData.floodZone === 'X' && !propertyData.inSFHA) {
+                flags.push({ type: 'green', text: '✓ FEMA Zone X - Minimal flood hazard (no flood insurance required)' });
+            }
+            
+            // Wildfire risk flags
+            if (propertyData.wildfireRisk) {
+                const fireRisk = propertyData.wildfireRisk.value;
+                if (fireRisk >= 5) {
+                    flags.push({ type: 'red', text: `🔥 VERY HIGH wildfire risk - consider defensible space requirements and insurance costs` });
+                } else if (fireRisk === 4) {
+                    flags.push({ type: 'red', text: `⚠️ HIGH wildfire risk area - research local fire history and mitigation` });
+                } else if (fireRisk <= 2 && fireRisk >= 1) {
+                    flags.push({ type: 'green', text: `✓ Low wildfire risk (USFS: ${propertyData.wildfireRisk.name})` });
+                }
+            }
+            
+            // Climate-related flags
+            if (propertyData.climate) {
+                if (propertyData.climate.annualPrecip < 10) {
+                    flags.push({ type: 'red', text: `🚨 Very low rainfall (${propertyData.climate.annualPrecip.toFixed(1)}"/yr) - water storage/hauling essential` });
+                } else if (propertyData.climate.annualPrecip < 15) {
+                    flags.push({ type: 'red', text: `⚠️ Low rainfall (${propertyData.climate.annualPrecip.toFixed(1)}"/yr) - drought-prone area` });
+                } else if (propertyData.climate.annualPrecip >= 30) {
+                    flags.push({ type: 'green', text: `✓ Good rainfall (${propertyData.climate.annualPrecip.toFixed(1)}"/yr)` });
+                }
+                
+                if (propertyData.climate.hotDaysPerYear > 60) {
+                    flags.push({ type: 'red', text: `⚠️ Extreme heat: ~${Math.round(propertyData.climate.hotDaysPerYear)} days/year over 95°F` });
+                }
+                
+                if (propertyData.climate.frostDaysPerYear < 20) {
+                    flags.push({ type: 'green', text: `✓ Long growing season (~${propertyData.climate.growingSeason} days)` });
+                } else if (propertyData.climate.frostDaysPerYear > 150) {
+                    flags.push({ type: 'red', text: `⚠️ Short growing season - ${Math.round(propertyData.climate.frostDaysPerYear)} frost days/year` });
+                }
+            }
+            
+            // Wildfire risk flags
+            if (propertyData.wildfireRisk) {
+                if (propertyData.wildfireRisk.value === 5) {
+                    flags.push({ type: 'red', text: '🔥 VERY HIGH wildfire risk - check insurance availability and defensible space requirements' });
+                } else if (propertyData.wildfireRisk.value === 4) {
+                    flags.push({ type: 'red', text: '🔥 HIGH wildfire risk - may affect insurance costs and require fire mitigation' });
+                } else if (propertyData.wildfireRisk.value <= 2 && propertyData.wildfireRisk.value >= 1) {
+                    flags.push({ type: 'green', text: '✓ Low wildfire risk' });
+                }
+            }
+            
+            // Emergency services flags
+            if (propertyData.emergencyServices && propertyData.emergencyServices.length > 0) {
+                const fireStation = propertyData.emergencyServices.find(s => s.type === 'fire');
+                const hospital = propertyData.emergencyServices.find(s => s.type === 'hospital');
+                
+                if (fireStation) {
+                    if (fireStation.drivingMinutes > 30) {
+                        flags.push({ type: 'red', text: `🚒 Remote from fire services (${fireStation.drivingMinutes} min to nearest station)` });
+                    } else if (fireStation.drivingMinutes <= 15) {
+                        flags.push({ type: 'green', text: `✓ Good fire station access (${fireStation.drivingMinutes} min)` });
+                    }
+                }
+                
+                if (hospital) {
+                    if (hospital.drivingMinutes > 45) {
+                        flags.push({ type: 'red', text: `🏥 Remote from hospital (${hospital.drivingMinutes} min to nearest)` });
+                    }
+                }
             }
 
             let flagsHtml = '';
@@ -1080,7 +1683,31 @@
             md += `## Auto-Fetched Data\n`;
             md += `- **Soil:** ${propertyData.soil || 'N/A'}\n`;
             md += `- **Road Type:** ${propertyData.roadType || 'N/A'}\n`;
-            md += `- **Road Surface:** ${propertyData.roadSurface || 'N/A'}\n\n`;
+            md += `- **Road Surface:** ${propertyData.roadSurface || 'N/A'}\n`;
+            md += `- **FEMA Flood Zone:** ${propertyData.floodZone || 'N/A'}${propertyData.floodZoneSubtype ? ` (${propertyData.floodZoneSubtype})` : ''}\n`;
+            md += `- **In Special Flood Hazard Area:** ${propertyData.inSFHA ? 'Yes' : 'No'}\n\n`;
+            
+            if (propertyData.climate) {
+                md += `## Climate Data (3-Year Average)\n`;
+                md += `- **Annual Rainfall:** ${propertyData.climate.annualPrecip.toFixed(1)} inches\n`;
+                md += `- **USDA Hardiness Zone:** ${propertyData.climate.hardinessZone}\n`;
+                md += `- **Avg High / Low:** ${Math.round(propertyData.climate.avgHigh)}°F / ${Math.round(propertyData.climate.avgLow)}°F\n`;
+                md += `- **Frost Days per Year:** ~${Math.round(propertyData.climate.frostDaysPerYear)}\n`;
+                md += `- **Hot Days (95°F+) per Year:** ~${Math.round(propertyData.climate.hotDaysPerYear)}\n`;
+                md += `- **Growing Season:** ~${propertyData.climate.growingSeason} days\n`;
+            }
+            
+            if (propertyData.wildfireRisk) {
+                md += `- **Wildfire Risk:** ${propertyData.wildfireRisk.name}\n`;
+            }
+            
+            if (propertyData.emergencyServices && propertyData.emergencyServices.length > 0) {
+                md += `\n## Emergency Services\n`;
+                for (const svc of propertyData.emergencyServices) {
+                    md += `- **${svc.type === 'fire' ? 'Fire Station' : 'Hospital'}:** ${svc.name} (${svc.drivingMiles} mi, ${svc.drivingMinutes} min)\n`;
+                }
+            }
+            md += `\n`;
             
             if (propertyData.scores) {
                 md += `## Score Breakdown\n`;
