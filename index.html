@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Land Evaluator Pro</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --success: #3fb950;
+            --warning: #d29922;
+            --danger: #f85149;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { margin-bottom: 8px; }
+        .subtitle { color: var(--text-muted); margin-bottom: 24px; }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .card h2 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: var(--accent);
+        }
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        input[type="text"], input[type="number"], select {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            flex: 1;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        button {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        button.secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .data-item {
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+        .data-item label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .data-item .value {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .data-item .value.good { color: var(--success); }
+        .data-item .value.warning { color: var(--warning); }
+        .data-item .value.danger { color: var(--danger); }
+        .data-item input, .data-item select {
+            width: 100%;
+            margin-top: 4px;
+        }
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        .status.loading {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+        }
+        .status.success {
+            background: rgba(63, 185, 80, 0.1);
+            color: var(--success);
+        }
+        .status.error {
+            background: rgba(248, 81, 73, 0.1);
+            color: var(--danger);
+        }
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .score-display {
+            text-align: center;
+            padding: 24px;
+        }
+        .score-number {
+            font-size: 64px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .score-label {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+        .score-breakdown {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .score-row:last-child { border-bottom: none; }
+        .red-flags {
+            margin-top: 16px;
+        }
+        .red-flag {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(248, 81, 73, 0.1);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--danger);
+        }
+        .hidden { display: none; }
+        .manual-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+        .manual-section h3 { font-size: 14px; color: var(--text-muted); margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🏞️ Land Evaluator Pro</h1>
+    <p class="subtitle">Enter an address to auto-fetch property data</p>
+
+    <div class="card">
+        <h2>📍 Property Address</h2>
+        <div class="input-group">
+            <input type="text" id="address" placeholder="Enter address (e.g., 29240 W Ash Creek Rd, Nebraska)">
+            <button onclick="lookupAddress()" id="lookupBtn">Look Up</button>
+        </div>
+        <div id="status" class="hidden"></div>
+    </div>
+
+    <div id="results" class="hidden">
+        <div class="card">
+            <h2>🔍 Auto-Fetched Data</h2>
+            <div class="data-grid">
+                <div class="data-item">
+                    <label>Coordinates</label>
+                    <div class="value" id="coords">--</div>
+                </div>
+                <div class="data-item">
+                    <label>Location</label>
+                    <div class="value" id="location">--</div>
+                </div>
+                <div class="data-item">
+                    <label>Soil Type</label>
+                    <div class="value" id="soil">--</div>
+                </div>
+                <div class="data-item">
+                    <label>Road Type</label>
+                    <div class="value" id="roadType">--</div>
+                </div>
+                <div class="data-item">
+                    <label>Road Surface</label>
+                    <div class="value" id="roadSurface">--</div>
+                </div>
+                <div class="data-item">
+                    <label>Flood Zone</label>
+                    <div class="value" id="floodZone">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>✏️ Manual Input (required for full score)</h2>
+            <div class="data-grid">
+                <div class="data-item">
+                    <label>Asking Price ($)</label>
+                    <input type="number" id="price" placeholder="e.g., 50000">
+                </div>
+                <div class="data-item">
+                    <label>Acreage</label>
+                    <input type="number" id="acreage" step="0.1" placeholder="e.g., 40">
+                </div>
+                <div class="data-item">
+                    <label>Water Access</label>
+                    <select id="water">
+                        <option value="">Select...</option>
+                        <option value="5">Well on property</option>
+                        <option value="4">Creek/pond on property</option>
+                        <option value="3">Water rights included</option>
+                        <option value="2">Can drill well</option>
+                        <option value="1">Must haul water</option>
+                        <option value="0">No water access</option>
+                    </select>
+                </div>
+                <div class="data-item">
+                    <label>Power Access</label>
+                    <select id="power">
+                        <option value="">Select...</option>
+                        <option value="5">On-grid at property</option>
+                        <option value="4">Power at road</option>
+                        <option value="3">Power within 1/4 mile</option>
+                        <option value="2">Power within 1 mile</option>
+                        <option value="1">Off-grid only</option>
+                    </select>
+                </div>
+                <div class="data-item">
+                    <label>Zoning</label>
+                    <select id="zoning">
+                        <option value="">Select...</option>
+                        <option value="5">Agricultural - no restrictions</option>
+                        <option value="4">Rural residential</option>
+                        <option value="3">Some restrictions</option>
+                        <option value="2">HOA/deed restrictions</option>
+                        <option value="1">Heavily restricted</option>
+                    </select>
+                </div>
+                <div class="data-item">
+                    <label>Legal Access</label>
+                    <select id="legalAccess">
+                        <option value="">Select...</option>
+                        <option value="5">Deeded road access</option>
+                        <option value="4">County road frontage</option>
+                        <option value="3">Easement recorded</option>
+                        <option value="2">Verbal easement</option>
+                        <option value="0">Landlocked</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 16px;">
+                <button onclick="calculateScore()">Calculate Score</button>
+            </div>
+        </div>
+
+        <div id="scoreCard" class="card hidden">
+            <h2>📊 Property Score</h2>
+            <div class="score-display">
+                <div class="score-number" id="totalScore">--</div>
+                <div class="score-label">out of 100</div>
+            </div>
+            <div class="score-breakdown" id="breakdown"></div>
+            <div class="red-flags" id="redFlags"></div>
+        </div>
+    </div>
+
+    <script>
+        let propertyData = {};
+
+        async function lookupAddress() {
+            const address = document.getElementById('address').value.trim();
+            if (!address) return alert('Please enter an address');
+
+            const btn = document.getElementById('lookupBtn');
+            const status = document.getElementById('status');
+            
+            btn.disabled = true;
+            status.className = 'status loading';
+            status.innerHTML = '<div class="spinner"></div> Looking up address...';
+            status.classList.remove('hidden');
+
+            try {
+                // Geocode
+                status.innerHTML = '<div class="spinner"></div> Geocoding address...';
+                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+                const geoData = await geoRes.json();
+                
+                if (!geoData.length) throw new Error('Address not found');
+                
+                const { lat, lon, display_name } = geoData[0];
+                propertyData.lat = parseFloat(lat);
+                propertyData.lon = parseFloat(lon);
+                propertyData.location = display_name;
+
+                document.getElementById('coords').textContent = `${parseFloat(lat).toFixed(4)}, ${parseFloat(lon).toFixed(4)}`;
+                document.getElementById('location').textContent = display_name.split(',').slice(0, 3).join(',');
+
+                // Soil data
+                status.innerHTML = '<div class="spinner"></div> Fetching soil data...';
+                try {
+                    const soilRes = await fetch('https://SDMDataAccess.sc.egov.usda.gov/Tabular/post.rest', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            format: 'JSON',
+                            query: `SELECT muname FROM mapunit WHERE mukey IN (SELECT mukey FROM SDA_Get_Mukey_from_intersection_with_WktWgs84('POINT(${lon} ${lat})'))`
+                        })
+                    });
+                    const soilData = await soilRes.json();
+                    if (soilData.Table && soilData.Table[0]) {
+                        propertyData.soil = soilData.Table[0][0];
+                        document.getElementById('soil').textContent = propertyData.soil;
+                        document.getElementById('soil').className = 'value good';
+                    }
+                } catch (e) {
+                    document.getElementById('soil').textContent = 'Unable to fetch';
+                    document.getElementById('soil').className = 'value warning';
+                }
+
+                // Road data from OSM
+                status.innerHTML = '<div class="spinner"></div> Checking road access...';
+                try {
+                    const osmQuery = `[out:json];way(around:200,${lat},${lon})[highway];out tags;`;
+                    const osmRes = await fetch('https://overpass-api.de/api/interpreter', {
+                        method: 'POST',
+                        body: osmQuery
+                    });
+                    const osmData = await osmRes.json();
+                    
+                    if (osmData.elements && osmData.elements.length > 0) {
+                        const road = osmData.elements[0].tags;
+                        propertyData.roadType = road.highway || 'unknown';
+                        propertyData.roadSurface = road.surface || 'unknown';
+                        propertyData.roadName = road.name || 'Unnamed road';
+                        
+                        document.getElementById('roadType').textContent = propertyData.roadType;
+                        document.getElementById('roadSurface').textContent = propertyData.roadSurface;
+                        
+                        // Color code road surface
+                        const surfaceEl = document.getElementById('roadSurface');
+                        if (['paved', 'asphalt', 'concrete'].includes(propertyData.roadSurface)) {
+                            surfaceEl.className = 'value good';
+                        } else if (['gravel', 'compacted'].includes(propertyData.roadSurface)) {
+                            surfaceEl.className = 'value warning';
+                        } else if (['dirt', 'sand', 'mud'].includes(propertyData.roadSurface)) {
+                            surfaceEl.className = 'value danger';
+                        }
+                    }
+                } catch (e) {
+                    document.getElementById('roadType').textContent = 'Unable to fetch';
+                    document.getElementById('roadSurface').textContent = 'Unable to fetch';
+                }
+
+                // Flood zone - try FEMA
+                status.innerHTML = '<div class="spinner"></div> Checking flood zone...';
+                document.getElementById('floodZone').textContent = 'Check FEMA manually';
+                document.getElementById('floodZone').className = 'value warning';
+                propertyData.floodZone = 'unknown';
+
+                status.className = 'status success';
+                status.innerHTML = '✓ Data fetched successfully';
+                document.getElementById('results').classList.remove('hidden');
+
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = '✗ ' + error.message;
+            }
+
+            btn.disabled = false;
+        }
+
+        function calculateScore() {
+            const price = parseFloat(document.getElementById('price').value) || 0;
+            const acreage = parseFloat(document.getElementById('acreage').value) || 0;
+            const water = parseInt(document.getElementById('water').value) || 0;
+            const power = parseInt(document.getElementById('power').value) || 0;
+            const zoning = parseInt(document.getElementById('zoning').value) || 0;
+            const legalAccess = parseInt(document.getElementById('legalAccess').value) || 0;
+
+            // Calculate sub-scores
+            const scores = {
+                water: { score: water * 20, weight: 0.25, label: 'Water Access' },
+                power: { score: power * 20, weight: 0.15, label: 'Power/Utilities' },
+                zoning: { score: zoning * 20, weight: 0.15, label: 'Zoning' },
+                access: { score: legalAccess * 20, weight: 0.20, label: 'Legal Access' },
+                road: { score: getRoadScore(), weight: 0.15, label: 'Road Quality' },
+                value: { score: getValueScore(price, acreage), weight: 0.10, label: 'Price/Value' }
+            };
+
+            // Calculate weighted total
+            let total = 0;
+            for (const key in scores) {
+                total += scores[key].score * scores[key].weight;
+            }
+
+            // Display score
+            const scoreEl = document.getElementById('totalScore');
+            scoreEl.textContent = Math.round(total);
+            scoreEl.style.color = total >= 70 ? 'var(--success)' : total >= 50 ? 'var(--warning)' : 'var(--danger)';
+
+            // Breakdown
+            let breakdownHtml = '';
+            for (const key in scores) {
+                breakdownHtml += `
+                    <div class="score-row">
+                        <span>${scores[key].label}</span>
+                        <span>${Math.round(scores[key].score)}/100 (${Math.round(scores[key].weight * 100)}% weight)</span>
+                    </div>
+                `;
+            }
+            document.getElementById('breakdown').innerHTML = breakdownHtml;
+
+            // Red flags
+            const flags = [];
+            if (legalAccess === 0) flags.push('🚨 Property may be landlocked');
+            if (water === 0) flags.push('🚨 No water access identified');
+            if (propertyData.roadSurface === 'dirt') flags.push('⚠️ Dirt road - may be impassable in bad weather');
+            if (price && acreage && (price / acreage) > 5000) flags.push('⚠️ Price per acre above market average');
+            if (propertyData.soil && propertyData.soil.toLowerCase().includes('rock')) flags.push('⚠️ Rocky soil - difficult for building/agriculture');
+
+            let flagsHtml = '';
+            for (const flag of flags) {
+                flagsHtml += `<div class="red-flag">${flag}</div>`;
+            }
+            document.getElementById('redFlags').innerHTML = flagsHtml || '<div style="color: var(--success);">✓ No red flags detected</div>';
+
+            document.getElementById('scoreCard').classList.remove('hidden');
+        }
+
+        function getRoadScore() {
+            if (!propertyData.roadSurface) return 50;
+            const surface = propertyData.roadSurface.toLowerCase();
+            if (['paved', 'asphalt', 'concrete'].includes(surface)) return 100;
+            if (['gravel', 'compacted'].includes(surface)) return 70;
+            if (['dirt', 'unpaved'].includes(surface)) return 40;
+            return 50;
+        }
+
+        function getValueScore(price, acreage) {
+            if (!price || !acreage) return 50;
+            const ppa = price / acreage;
+            // Rough heuristic - adjust based on region
+            if (ppa < 1000) return 100;
+            if (ppa < 2000) return 80;
+            if (ppa < 3500) return 60;
+            if (ppa < 5000) return 40;
+            return 20;
+        }
+    </script>
+</body>
+</html>
