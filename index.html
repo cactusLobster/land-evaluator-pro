@@ -377,7 +377,10 @@
             <div class="data-grid">
                 <div class="data-item">
                     <label>Coordinates</label>
-                    <div class="value" id="coords">--</div>
+                    <div class="value" id="coords" style="display: flex; align-items: center; gap: 8px;">
+                        <span id="coordsText">--</span>
+                        <button class="small secondary" onclick="copyCoords()" title="Copy coordinates" style="padding: 2px 6px; font-size: 11px;">📋</button>
+                    </div>
                     <a href="#" id="mapLink" class="map-link" target="_blank">View on Map →</a>
                 </div>
                 <div class="data-item">
@@ -877,7 +880,7 @@
             const { lat, lon } = propertyData;
             
             // Update coords display
-            document.getElementById('coords').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+            document.getElementById('coordsText').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
             document.getElementById('mapLink').href = `https://www.google.com/maps?q=${lat},${lon}`;
             document.getElementById('location').textContent = propertyData.location.split(',').slice(0, 3).join(',');
 
@@ -1473,6 +1476,21 @@
             document.getElementById('linkLandwatch').href = `https://www.landwatch.com/land?minAcre=10&maxPrice=100000&lat=${lat}&lng=${lon}&radius=50`;
         }
         
+        function copyCoords() {
+            if (!propertyData.lat || !propertyData.lon) return;
+            const coords = `${propertyData.lat.toFixed(6)}, ${propertyData.lon.toFixed(6)}`;
+            navigator.clipboard.writeText(coords).then(() => {
+                // Brief visual feedback
+                const btn = event.target;
+                const original = btn.textContent;
+                btn.textContent = '✓';
+                setTimeout(() => btn.textContent = original, 1000);
+            }).catch(err => {
+                console.log('Copy failed:', err);
+                alert('Coordinates: ' + coords);
+            });
+        }
+
         function openExternalMap(type) {
             const { lat, lon } = propertyData;
             let url = '';
@@ -1941,7 +1959,7 @@
             
             // Restore displays
             if (propertyData.lat && propertyData.lon) {
-                document.getElementById('coords').textContent = `${propertyData.lat.toFixed(4)}, ${propertyData.lon.toFixed(4)}`;
+                document.getElementById('coordsText').textContent = `${propertyData.lat.toFixed(4)}, ${propertyData.lon.toFixed(4)}`;
                 document.getElementById('mapLink').href = `https://www.google.com/maps?q=${propertyData.lat},${propertyData.lon}`;
             }
             if (propertyData.location) {
