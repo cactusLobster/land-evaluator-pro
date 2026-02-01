@@ -314,7 +314,6 @@
             border: 1px solid var(--border);
             border-radius: 6px;
             margin-bottom: 8px;
-            cursor: pointer;
             transition: all 0.2s;
         }
         .saved-item:hover { border-color: var(--accent); }
@@ -1928,6 +1927,16 @@
             alert('Evaluation saved!');
         }
 
+        function deleteEvaluation(id, event) {
+            event.stopPropagation(); // Don't trigger loadEvaluation
+            if (!confirm('Delete this saved evaluation?')) return;
+            
+            const saved = JSON.parse(localStorage.getItem('landEvaluations') || '[]');
+            const filtered = saved.filter(e => e.id !== id);
+            localStorage.setItem('landEvaluations', JSON.stringify(filtered));
+            loadSavedList();
+        }
+
         function loadSavedList() {
             const saved = JSON.parse(localStorage.getItem('landEvaluations') || '[]');
             const container = document.getElementById('savedList');
@@ -1938,13 +1947,16 @@
             }
             
             container.innerHTML = saved.map(e => `
-                <div class="saved-item" onclick="loadEvaluation(${e.id})">
-                    <div>
+                <div class="saved-item">
+                    <div onclick="loadEvaluation(${e.id})" style="flex: 1; cursor: pointer;">
                         <div class="saved-item-name">${e.name}</div>
                         <div class="saved-item-date">${new Date(e.date).toLocaleDateString()}</div>
                     </div>
-                    <div class="saved-item-score" style="background: ${e.score >= 70 ? 'var(--success)' : e.score >= 50 ? 'var(--warning)' : 'var(--danger)'}; color: #000;">
-                        ${e.score || '--'}
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="saved-item-score" style="background: ${e.score >= 70 ? 'var(--success)' : e.score >= 50 ? 'var(--warning)' : 'var(--danger)'}; color: #000;">
+                            ${e.score || '--'}
+                        </div>
+                        <button onclick="deleteEvaluation(${e.id}, event)" class="small secondary" style="padding: 4px 8px; font-size: 11px;" title="Delete">🗑️</button>
                     </div>
                 </div>
             `).join('');
