@@ -458,6 +458,10 @@
                         <label>EPA Radon Zone</label>
                         <div class="value" id="radonZone">--</div>
                     </div>
+                    <div class="data-item">
+                        <label>Solar Potential</label>
+                        <div class="value" id="solarPotential">--</div>
+                    </div>
                 </div>
             </div>
             
@@ -638,6 +642,7 @@
                 <p><strong>Flood Zones:</strong> <a href="https://www.fema.gov/flood-maps/national-flood-hazard-layer" target="_blank" style="color: var(--accent);">FEMA National Flood Hazard Layer</a></p>
                 <p><strong>Wildfire Risk:</strong> <a href="https://www.fs.usda.gov/rmrs/datasets/wildfire-hazard-potential-united-states-270-m-version-2020-3rd-edition" target="_blank" style="color: var(--accent);">USFS Wildfire Hazard Potential</a> (2023)</p>
                 <p><strong>Radon Zones:</strong> <a href="https://www.epa.gov/radon/epa-map-radon-zones" target="_blank" style="color: var(--accent);">EPA Map of Radon Zones</a></p>
+                <p><strong>Solar Data:</strong> <a href="https://developer.nrel.gov/docs/solar/" target="_blank" style="color: var(--accent);">NREL Solar Resource Database</a></p>
                 <p><strong>Driving Routes:</strong> <a href="http://project-osrm.org/" target="_blank" style="color: var(--accent);">OSRM (Open Source Routing Machine)</a></p>
                 <p><strong>Map Tiles:</strong> <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color: var(--accent);">OpenStreetMap</a> via Leaflet</p>
                 <p style="margin-top: 12px; font-style: italic;">This tool provides general information for property research purposes only. Always verify data with official sources and conduct professional inspections before purchasing land.</p>
@@ -1173,6 +1178,44 @@
             } catch (e) {
                 console.log('Radon zone fetch failed:', e);
                 document.getElementById('radonZone').innerHTML = '<span class="warning">Unable to fetch</span>';
+            }
+
+            // Fetch Solar Resource Data from NREL
+            showStatus('loading', 'Checking solar potential...');
+            try {
+                const solarUrl = `https://developer.nrel.gov/api/solar/solar_resource/v1.json?api_key=DEMO_KEY&lat=${lat}&lon=${lon}`;
+                const solarRes = await fetch(solarUrl);
+                const solarData = await solarRes.json();
+                
+                const solarEl = document.getElementById('solarPotential');
+                
+                if (solarData.outputs && solarData.outputs.avg_ghi) {
+                    const ghi = solarData.outputs.avg_ghi.annual;
+                    propertyData.solarGHI = ghi;
+                    
+                    // Rate solar potential (US average is ~4-5 kWh/m²/day)
+                    let rating, ratingClass;
+                    if (ghi >= 5.5) {
+                        rating = 'Excellent';
+                        ratingClass = 'good';
+                    } else if (ghi >= 4.5) {
+                        rating = 'Good';
+                        ratingClass = 'good';
+                    } else if (ghi >= 3.5) {
+                        rating = 'Moderate';
+                        ratingClass = 'warning';
+                    } else {
+                        rating = 'Low';
+                        ratingClass = 'danger';
+                    }
+                    
+                    solarEl.innerHTML = `<span class="${ratingClass}">${rating}</span> <span style="font-size: 10px; color: var(--text-muted);">(${ghi.toFixed(1)} kWh/m²/day)</span>`;
+                } else {
+                    solarEl.innerHTML = '<span class="warning">Data unavailable</span>';
+                }
+            } catch (e) {
+                console.log('Solar data fetch failed:', e);
+                document.getElementById('solarPotential').innerHTML = '<span class="warning">Unable to fetch</span>';
             }
 
             // Find nearby towns with driving time
@@ -1739,6 +1782,15 @@
                 }
             }
             
+            // Solar potential flags
+            if (propertyData.solarGHI) {
+                if (propertyData.solarGHI >= 5.5) {
+                    flags.push({ type: 'green', text: `☀️ Excellent solar potential (${propertyData.solarGHI.toFixed(1)} kWh/m²/day) - great for off-grid` });
+                } else if (propertyData.solarGHI < 3.5) {
+                    flags.push({ type: 'red', text: `⚠️ Low solar potential - off-grid solar may be challenging` });
+                }
+            }
+            
             // Climate-related flags
             if (propertyData.climate) {
                 if (propertyData.climate.annualPrecip < 10) {
@@ -1994,6 +2046,10 @@
             if (propertyData.radonZone) {
                 const radonNames = { 1: 'High', 2: 'Moderate', 3: 'Low' };
                 md += `- **EPA Radon Zone:** ${propertyData.radonZone.zone} (${radonNames[propertyData.radonZone.zone] || 'Unknown'})\n`;
+            }
+            
+            if (propertyData.solarGHI) {
+                md += `- **Solar Potential:** ${propertyData.solarGHI.toFixed(1)} kWh/m²/day (NREL)\n`;
             }
             
             if (propertyData.emergencyServices && propertyData.emergencyServices.length > 0) {
